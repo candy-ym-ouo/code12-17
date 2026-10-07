@@ -27,6 +27,9 @@ model User {
   observations  Observation[]
   tags          Tag[]
   shareLinks    ShareLink[]
+  qualityReports QualityReport[]
+  qualityFindings QualityFinding[]
+  qualityActions QualityAction[]
 }
 
 model RefreshToken {
@@ -197,4 +200,80 @@ model ShareLink {
   owner User @relation(fields: [ownerId], references: [id], onDelete: Cascade)
 
   @@index([siteId, revokedAt])
+}
+
+// 数据质量体检：一次扫描对应一份报告。报告本身是只读快照，处置动作写在 QualityAction。
+model QualityReport {
+  id          String    @id @default(cuid())
+  ownerId     String
+  rulesetVersion String @default("1.0.0")
+  status      String    @default("COMPLETED")
+  summary     String
+  params      String?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  owner    User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  findings QualityFinding[]
+
+  @@index([ownerId, createdAt])
+}
+
+// 同一条问题（owner + fingerprint）全局唯一，跨报告复用；每次扫描只更新最新状态与分级，
+// 因此分级建议可随时由同一套规则复算（rulesetVersion 标记规则版本）。
+model QualityFinding {
+  id           String   @id @default(cuid())
+  ownerId      String
+  reportId     String
+  ruleCode     String
+  category     String
+  severity     String
+  status       String   @default("OPEN")
+  entityType   String
+  entityId     String?
+  storageKey   String?
+  title        String
+  detail       String
+  evidence     String
+  suggestion   String
+  suggestedAction String
+  fingerprint  String
+  firstSeenAt  DateTime @default(now())
+  lastSeenAt   DateTime @default(now())
+  resolvedAt   DateTime?
+  dismissedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner   User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  report  QualityReport @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  actions QualityAction[]
+
+  @@unique([ownerId, fingerprint])
+  @@index([ownerId, status, severity])
+  @@index([reportId])
+  @@index([ownerId, ruleCode])
+}
+
+// 处置动作凭据：执行前留存 beforeSnapshot，回滚后留存 rollback 结果，全程可审计。
+model QualityAction {
+  id             String   @id @default(cuid())
+  findingId      String
+  ownerId        String
+  action         String
+  status         String   @default("APPLIED")
+  params         String?
+  beforeSnapshot String
+  afterSnapshot  String?
+  executedAt     DateTime @default(now())
+  rolledBackAt   DateTime?
+  rollbackResult String?
+  createdAt      DateTime @default(now())
+
+  finding QualityFinding @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  owner   User           @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([findingId])
+  @@index([ownerId, executedAt])
 }

@@ -35,6 +35,7 @@ const router = createRouter({
         { path: "species", name: "species", component: () => import("@/views/SpeciesView.vue") },
         { path: "compare", name: "compare", component: () => import("@/views/CompareView.vue") },
         { path: "stats", name: "stats", component: () => import("@/views/StatsView.vue") },
+        { path: "quality", name: "quality", component: () => import("@/views/QualityView.vue") },
         { path: "settings", name: "settings", component: () => import("@/views/SettingsView.vue") },
       ],
     },

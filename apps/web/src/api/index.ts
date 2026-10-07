@@ -217,6 +217,93 @@ export const statsApi = {
   },
 };
 
+export interface QualityFinding {
+  id: string;
+  reportId: string;
+  ruleCode: string;
+  category: "DATE" | "PHASE" | "FILE";
+  severity: "CRITICAL" | "WARNING" | "INFO";
+  status: "OPEN" | "RESOLVED" | "DISMISSED";
+  entityType: string;
+  entityId: string | null;
+  storageKey: string | null;
+  title: string;
+  detail: string;
+  evidence: Record<string, unknown>;
+  suggestion: string;
+  suggestedAction: string;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  resolvedAt: string | null;
+  dismissedAt: string | null;
+}
+
+export interface QualityActionRecord {
+  id: string;
+  findingId?: string;
+  action: string;
+  status: string;
+  params: Record<string, unknown> | null;
+  beforeSnapshot: Record<string, unknown>;
+  afterSnapshot: Record<string, unknown> | null;
+  rollbackResult: Record<string, unknown> | null;
+  executedAt: string;
+  rolledBackAt: string | null;
+}
+
+export const qualityApi = {
+  async scan(body: {
+    minYear?: number;
+    maxYear?: number;
+    includeOrphanFiles?: boolean;
+    categories?: Array<"DATE" | "PHASE" | "FILE">;
+  } = {}) {
+    const { data } = await http.post<{ data: { reportId: string; summary: Record<string, unknown>; params: Record<string, unknown> } }>(
+      "/quality/scan",
+      body,
+    );
+    return data.data;
+  },
+  async recompute() {
+    const { data } = await http.post<{ data: { recomputed: number } }>("/quality/recompute", {});
+    return data.data;
+  },
+  async listFindings(params: {
+    status?: string;
+    severity?: string;
+    category?: string;
+    ruleCode?: string;
+    limit?: number;
+    offset?: number;
+  } = {}) {
+    const { data } = await http.get<{ data: QualityFinding[]; meta: Record<string, unknown> }>("/quality/findings", { params });
+    return { items: data.data, meta: data.meta as { statusCounts: Record<string, number>; severityCounts: Record<string, number>; total: number } };
+  },
+  async getFinding(id: string) {
+    const { data } = await http.get<{ data: QualityFinding & { actions: QualityActionRecord[] } }>(`/quality/findings/${id}`);
+    return data.data;
+  },
+  async applyAction(
+    findingId: string,
+    body: { action: string; newDate?: string; phenophaseId?: string; speciesId?: string; reason?: string },
+  ) {
+    const { data } = await http.post<{ data: Record<string, unknown> }>(`/quality/findings/${findingId}/actions`, body);
+    return data.data;
+  },
+  async rollback(actionId: string) {
+    const { data } = await http.post<{ data: Record<string, unknown> }>(`/quality/actions/${actionId}/rollback`, {});
+    return data.data;
+  },
+  async listActions(params: { findingId?: string; limit?: number; offset?: number } = {}) {
+    const { data } = await http.get<ApiList<QualityActionRecord>>("/quality/actions", { params });
+    return data.data;
+  },
+  async listReports(params: { limit?: number; offset?: number } = {}) {
+    const { data } = await http.get<ApiList<Record<string, unknown>>>("/quality/reports", { params });
+    return data.data;
+  },
+};
+
 export const shareApi = {
   async view(token: string) {
     const { data } = await http.get<{ data: {

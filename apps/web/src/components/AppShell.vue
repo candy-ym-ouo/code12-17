@@ -55,6 +55,9 @@ async function handleLogout() {
           <router-link class="shell-nav__item" :class="{ 'is-active': activeNav === 'species' }" to="/species">
             物种
           </router-link>
+          <router-link class="shell-nav__item" :class="{ 'is-active': activeNav === 'quality' }" to="/quality">
+            数据体检
+          </router-link>
         </nav>
 
         <div class="spacer"></div>

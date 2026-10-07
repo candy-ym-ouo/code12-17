@@ -46,6 +46,9 @@ pnpm --filter @nature/api smoke   # 走一遍注册→建点→导入物种→�
 | `pnpm test:coverage` | 后端覆盖率报告 |
 | `pnpm test:e2e` | Playwright 端到端测试（需要数据库已迁移并 seed） |
 | `pnpm --filter @nature/api smoke` | 闭环冒烟测试（需要 API 已启动） |
+| `pnpm --filter @nature/api quality:scan` | 数据质量体检 CLI（全用户扫描，含孤立文件；可 `--user/--min-year/--category`） |
+| `pnpm --filter @nature/api quality:recompute` | 只按当前规则集复算历史问题分级 |
+| `pnpm --filter @nature/api quality:rollback <actionId>` | 凭处置凭据回滚一次处置动作 |
 | `pnpm typecheck` | 两端类型检查 |
 
 ## 目录结构
@@ -75,6 +78,7 @@ origin/
 - 统计：概览指标、逐年首现日折线、相对基准偏移柱状图、天气同期偏差（样本不足时明确不下结论）
 - 导出：CSV（带 BOM，Excel 不乱码）与 JSON（含照片链接）
 - 运维：健康检查、就绪检查、结构化日志与 traceId、限流、备份恢复说明
+- 数据质量体检：扫描日期越界（非法日历日/年份越窗/observedAt 漂移）、植物物候阶段缺失、照片文件缺失与磁盘孤立文件；分级建议可复算，处置动作保留改前凭据并支持回滚
 
 ## 关键实现说明
 
@@ -84,6 +88,17 @@ origin/
 - **图片**：统一解码为 webp 三档（480 / 1600 / 2560），默认剥离 GPS，保留拍摄时间。
 - **存储**：内置本地磁盘适配器（`thumb/`、`display/`、`original/` + 年/月目录）；对象存储适配器预留接口，配置 `S3_BUCKET` 时服务会明确报错提示未启用，而不是静默降级。
 - **时区**：默认 `Asia/Shanghai`，用户可在设置页修改，影响"今天"的判定与天气默认年份。
+
+## 数据质量体检（可复算、可回滚）
+
+入口：前端「数据体检」页（`/quality`）或 `pnpm --filter @nature/api quality:scan`（CLI 不依赖 HTTP 服务，且默认启用需要全盘清单的孤立文件规则）。
+
+- **扫描规则**（规则集版本记录在每份报告 `rulesetVersion` 上）：
+  - 日期：`DATE_INVALID`（非法 YYYY-MM-DD，严重）、`DATE_OUT_OF_RANGE`（超出合理年份窗口，默认 1990–次年）、`DATE_OBSERVED_AT_MISMATCH`（日历日与时间戳漂移，提示）；
+  - 阶段：`PHASE_MISSING_FOR_PLANT`（植物物候记录无阶段，警告）、`PHASE_WITHOUT_SPECIES`（有阶段却无物种，警告）；
+  - 文件：`FILE_MISSING`（照片元数据在、三档物理文件缺失，全丢为严重、部分丢为警告）、`FILE_ORPHAN`（磁盘有文件但无任何记录引用，三档齐全为警告，仅管理员/CLI 可触发）。
+- **分级可复算**：规则是纯函数，每条问题有稳定 `fingerprint`（用户 + 规则 + 实体定位）；重新扫描会自动对账（新问题 OPEN、消失的 OPEN 置 RESOLVED、人工 DISMISSED 不复活），`POST /api/v1/quality/recompute` 可在不重扫磁盘的情况下按最新规则集刷新历史问题分级。
+- **处置与回滚凭据**：每次处置先写 `QualityAction.beforeSnapshot`（改前字段 / 完整照片行 / 隔离路径），再改数据；孤立文件不硬删除而是移到 `uploads/.quarantine/<actionId>/`。`POST /api/v1/quality/actions/:id/rollback` 凭凭据原样还原，凭据核销后不可重复回滚（`ROLLED_BACK` 状态留痕）。目标观测已被删除等无法回滚的场景返回明确错误而不是静默成功。
 
 ## 生产部署（不依赖容器）
 
@@ -124,7 +139,7 @@ tar xzf uploads_2026-10-07.tar.gz -C apps/api/uploads
 
 | 层级 | 命令 | 覆盖 |
 | --- | --- | --- |
-| 后端单元 + 接口 | `pnpm --filter @nature/api test` | 40 项：认证、权限、重复校验、游标分页、草稿、照片、对比偏移、导出 |
+| 后端单元 + 接口 | `pnpm --filter @nature/api test` | 48 项：认证、权限、重复校验、游标分页、草稿、照片、对比偏移、导出、数据质量体检（规则/处置/回滚） |
 | 后端闭环冒烟 | `pnpm --filter @nature/api smoke` | 17 项：真实 HTTP 走通主链路 |
 | 前端组件/状态 | `pnpm --filter @nature/web test` | 8 项：分组、筛选参数、时间线卡片、对比网格 |
 | 端到端 | `pnpm --filter @nature/web test:e2e` | 桌面与移动视口：注册→建点→导入物种→记录→时间线；匿名分享 |

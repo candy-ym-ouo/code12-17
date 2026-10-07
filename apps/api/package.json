@@ -19,6 +19,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "smoke": "node scripts/smoke-test.mjs",
+    "quality:scan": "tsx scripts/quality-check.ts scan",
+    "quality:recompute": "tsx scripts/quality-check.ts recompute",
+    "quality:rollback": "tsx scripts/quality-check.ts rollback",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

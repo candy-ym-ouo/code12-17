@@ -20,6 +20,7 @@ import { shareLinkRouter, siteRouter } from "./modules/sites/router";
 import { phenophaseRouter, speciesRouter } from "./modules/species/router";
 import { statsRouter } from "./modules/stats/router";
 import { tagRouter } from "./modules/tags/router";
+import { qualityRouter } from "./modules/quality/router";
 
 const VARIANTS: StorageVariant[] = ["thumb", "display", "original"];
 
@@ -95,6 +96,7 @@ export function createApp() {
   app.use("/api/v1/photos", photoRouter);
 
   app.use("/api/v1/stats", statsRouter);
+  app.use("/api/v1/quality", qualityRouter);
   app.use("/api/v1/export", exportRouter);
   app.use("/api/v1/share", shareRouter);
 
