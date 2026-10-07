@@ -56,15 +56,20 @@ export function addDays(value: string, days: number): string {
   return `${year}-${month}-${day}`;
 }
 
-/** 某个时区的"今天"（YYYY-MM-DD）。 */
-export function todayInTimezone(timezone = "Asia/Shanghai", now = new Date()): string {
+/** 某个时刻在某个时区的日历日（YYYY-MM-DD）。 */
+export function dateInTimezone(date: Date, timezone = "Asia/Shanghai"): string {
   const formatter = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   });
-  return formatter.format(now);
+  return formatter.format(date);
+}
+
+/** 某个时区的"今天"（YYYY-MM-DD）。 */
+export function todayInTimezone(timezone = "Asia/Shanghai", now = new Date()): string {
+  return dateInTimezone(now, timezone);
 }
 
 /** 当前时区年份。 */

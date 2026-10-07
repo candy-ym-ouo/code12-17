@@ -15,6 +15,7 @@ import { authRouter } from "./modules/auth/router";
 import { exportRouter } from "./modules/export/router";
 import { observationRouter } from "./modules/observations/router";
 import { observationPhotoRouter, photoRouter } from "./modules/photos/router";
+import { qualityRouter } from "./modules/quality/router";
 import { shareRouter } from "./modules/share/router";
 import { shareLinkRouter, siteRouter } from "./modules/sites/router";
 import { phenophaseRouter, speciesRouter } from "./modules/species/router";
@@ -97,6 +98,7 @@ export function createApp() {
   app.use("/api/v1/stats", statsRouter);
   app.use("/api/v1/export", exportRouter);
   app.use("/api/v1/share", shareRouter);
+  app.use("/api/v1/quality", qualityRouter);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

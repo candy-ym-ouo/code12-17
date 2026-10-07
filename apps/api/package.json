@@ -19,6 +19,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "smoke": "node scripts/smoke-test.mjs",
+    "quality:scan": "tsx scripts/quality-scan.ts",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },

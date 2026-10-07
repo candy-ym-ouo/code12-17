@@ -41,6 +41,30 @@ export class LocalDiskStorage implements StorageAdapter {
     }
   }
 
+  async list(variant: StorageVariant): Promise<string[]> {
+    const base = path.resolve(this.root, variant);
+    const keys: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      let entries;
+      try {
+        entries = await fs.readdir(dir, { withFileTypes: true });
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+        throw error;
+      }
+      for (const entry of entries) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) {
+          await walk(full);
+        } else if (entry.isFile()) {
+          keys.push(path.relative(base, full).split(path.sep).join("/"));
+        }
+      }
+    };
+    await walk(base);
+    return keys.sort();
+  }
+
   publicUrl(key: string, variant: StorageVariant): string {
     return `/files/${variant}/${key}`;
   }
